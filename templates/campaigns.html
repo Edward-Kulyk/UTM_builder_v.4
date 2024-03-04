@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Campaigns Overview{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+{% endblock %}
+
+{% block content %}
+    <h1>Campaigns Overview</h1>
+    {% for campaign_data in grouped_campaigns %}
+        <h2>{{ campaign_data.campaign_name }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>URLs</th>
+                    <th>Campaign Contents</th>
+                    <th>Campaign Sources</th>
+                    <th>Campaign Mediums</th>
+                    <th>Short Secure URLs</th>
+                    <th>Clicks Counts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set urls_list = campaign_data.urls.split(',') %}
+                {% set campaign_contents_list = campaign_data.campaign_contents.split(',') %}
+                {% set campaign_sources_list = campaign_data.campaign_sources.split(',') %}
+                {% set campaign_mediums_list = campaign_data.campaign_mediums.split(',') %}
+                {% set short_secure_urls_list = campaign_data.short_secure_urls.split(',') %}
+                {% set clicks_counts_list = campaign_data.clicks_counts.split(',') %}
+
+                {% for i in range(urls_list | length) %}
+                    <tr>
+                        <td>{{ urls_list[i] }}</td>
+                        <td>{{ campaign_contents_list[i] }}</td>
+                        <td>{{ campaign_sources_list[i] }}</td>
+                        <td>{{ campaign_mediums_list[i] }}</td>
+                        <td>{{ short_secure_urls_list[i] }}</td>
+                        <td>{{ clicks_counts_list[i] }}</td>
+                    </tr>
+                {% endfor %}
+                <tr class="total-clicks">
+                    <td colspan="5">Total Clicks</td>
+                    <td>{{ campaign_data.total_clicks }}</td>
+                </tr>
+            </tbody>
+        </table>
+    {% endfor %}
+{% endblock %}

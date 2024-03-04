@@ -1,0 +1,326 @@
+import pandas as pd
+from flask import Blueprint, request, render_template, redirect
+from sqlalchemy import func, Integer, desc, cast
+
+from app import db
+from models.models import UTMLink, ExcludedOption
+from utils.db_utils import extract_first_if_tuple
+from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter
+
+main = Blueprint('main', __name__, )
+
+
+@main.route('/', methods=['GET', 'POST'])
+def index():
+    short_secure_url = None
+    utm_entries = UTMLink.query.all()
+    error_message = None
+
+    excluded_campaign_sources = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_sources[]').with_entities(ExcludedOption.option_value).distinct().all()]
+    excluded_campaign_mediums = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_mediums[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_contents = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_contents[]').with_entities(
+        ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_names = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_names[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_urls = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'urls[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_sources = extract_first_if_tuple(excluded_campaign_sources)
+    excluded_campaign_mediums = extract_first_if_tuple(excluded_campaign_mediums)
+    excluded_campaign_contents = extract_first_if_tuple(excluded_campaign_contents)
+    excluded_campaign_names = extract_first_if_tuple(excluded_campaign_names)
+    excluded_urls = extract_first_if_tuple(excluded_urls)
+
+    if request.method == 'POST':
+        url = request.form['url']
+        campaign_content = request.form.get('campaign_content', ' ')
+        campaign_source = request.form['campaign_source']
+        campaign_medium = request.form['campaign_medium']
+        campaign_name = request.form['campaign_name']
+        domain = request.form['domain']
+        slug = request.form.get('slug', "")
+
+        if url == 'other':
+            url = request.form['url_other']
+        if campaign_content == 'other':
+            campaign_content = request.form['campaign_content_other']
+        if campaign_source == 'other':
+            campaign_source = request.form['campaign_source_other']
+        if campaign_medium == 'other':
+            campaign_medium = request.form['campaign_medium_other']
+        if campaign_name == 'other':
+            campaign_name = request.form['campaign_name_other']
+
+        # Construct the UTM link with spaces replaced by '+'
+        utm_link = f"{url}?utm_campaign={campaign_name.replace(' ', '+')}&utm_medium={campaign_medium.replace(' ', '+')}&utm_source={campaign_source.replace(' ', '+')}&utm_content={campaign_content.replace(' ', '+')}"
+
+        # Check if a similar record already exists
+        existing_record = UTMLink.query.filter_by(
+            url=url,
+            campaign_content=campaign_content,
+            campaign_source=campaign_source,
+            campaign_medium=campaign_medium,
+            campaign_name=campaign_name,
+            domain=domain,
+            slug=slug,
+        ).first()
+
+        if existing_record:
+            error_message = "Similar record already exists."
+        else:
+
+            # Create UTM link using Short.io API
+            short_url = create_short_link(domain, slug, utm_link)
+
+            if short_url.get('error'):
+                # Handle error case (e.g., log the error, display an error message)
+                error_message = short_url['error']
+                print(f"Error creating short link: {error_message}")
+            else:
+                # Update the database with short link information
+                short_id = short_url['idString']
+                short_secure_url = short_url['secureShortURL']
+                if slug == "":
+                    slug = short_url['path']
+                # Save data to the database
+                utm_link = UTMLink(
+                    url=url, campaign_content=campaign_content, campaign_source=campaign_source,
+                    campaign_medium=campaign_medium, campaign_name=campaign_name,
+                    domain=domain, slug=slug, short_id=short_id, short_secure_url=short_secure_url
+                )
+
+                db.session.add(utm_link)
+                db.session.commit()
+
+    # Fetch unique values for dropdowns
+    unique_campaign_sources = [source[0] for source in UTMLink.query.with_entities(UTMLink.campaign_source)
+    .filter(UTMLink.campaign_source.notin_(excluded_campaign_sources)).distinct().all()]
+
+    unique_campaign_mediums = [medium[0] for medium in UTMLink.query.with_entities(UTMLink.campaign_medium)
+    .filter(UTMLink.campaign_medium.notin_(excluded_campaign_mediums)).distinct().all()]
+
+    unique_campaign_contents = [content[0] for content in UTMLink.query.with_entities(UTMLink.campaign_content)
+    .filter(UTMLink.campaign_content.notin_(excluded_campaign_contents)).distinct().all()]
+
+    unique_campaign_names = [name[0] for name in UTMLink.query.with_entities(UTMLink.campaign_name)
+    .filter(UTMLink.campaign_name.notin_(excluded_campaign_names)).distinct().all()]
+
+    unique_urls = [url[0] for url in UTMLink.query.with_entities(UTMLink.url)
+    .filter(UTMLink.url.notin_(excluded_urls)).distinct().all()]
+
+    if short_secure_url is None:
+        return render_template('index.html', utm_entries=utm_entries, unique_campaign_contents=unique_campaign_contents,
+                               unique_campaign_sources=unique_campaign_sources,
+                               unique_campaign_mediums=unique_campaign_mediums,
+                               unique_campaign_names=unique_campaign_names,
+                               unique_url=unique_urls, error_message=error_message)
+    else:
+        return render_template('index.html', utm_entries=utm_entries, unique_campaign_ids=unique_campaign_contents,
+                               unique_campaign_sources=unique_campaign_sources,
+                               unique_campaign_mediums=unique_campaign_mediums,
+                               unique_campaign_names=unique_campaign_names,
+                               unique_url=unique_urls, short_url=short_secure_url, error_message=error_message)
+
+
+@main.route('/exclude-options', methods=['GET', 'POST'])
+def exclude_options():
+    if request.method == 'POST':
+        for field_name, values in request.form.lists():
+            if field_name.startswith('exclude_'):
+                option_type = field_name.replace('exclude_', '')
+                for value in values:
+                    excluded_option = ExcludedOption(option_type=option_type, option_value=value)
+                    db.session.add(excluded_option)
+
+        db.session.commit()
+
+    excluded_campaign_sources = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_sources[]').with_entities(ExcludedOption.option_value).distinct().all()]
+    excluded_campaign_mediums = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_mediums[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_contents = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_contents[]').with_entities(
+        ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_names = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_names[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_urls = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'urls[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_sources = extract_first_if_tuple(excluded_campaign_sources)
+    excluded_campaign_mediums = extract_first_if_tuple(excluded_campaign_mediums)
+    excluded_campaign_contents = extract_first_if_tuple(excluded_campaign_contents)
+    excluded_campaign_names = extract_first_if_tuple(excluded_campaign_names)
+    excluded_urls = extract_first_if_tuple(excluded_urls)
+
+    unique_campaign_sources = [source[0] for source in UTMLink.query.with_entities(UTMLink.campaign_source)
+    .filter(UTMLink.campaign_source.notin_(excluded_campaign_sources)).distinct().all()]
+
+    unique_campaign_mediums = [medium[0] for medium in UTMLink.query.with_entities(UTMLink.campaign_medium)
+    .filter(UTMLink.campaign_medium.notin_(excluded_campaign_mediums)).distinct().all()]
+
+    unique_campaign_contents = [content[0] for content in UTMLink.query.with_entities(UTMLink.campaign_content)
+    .filter(UTMLink.campaign_content.notin_(excluded_campaign_contents)).distinct().all()]
+
+    unique_campaign_names = [name[0] for name in UTMLink.query.with_entities(UTMLink.campaign_name)
+    .filter(UTMLink.campaign_name.notin_(excluded_campaign_names)).distinct().all()]
+
+    unique_urls = [url[0] for url in UTMLink.query.with_entities(UTMLink.url)
+    .filter(UTMLink.url.notin_(excluded_urls)).distinct().all()]
+
+    return render_template('exclude_options.html',
+                           unique_campaign_contents=unique_campaign_contents,
+                           unique_campaign_sources=unique_campaign_sources,
+                           unique_campaign_mediums=unique_campaign_mediums,
+                           unique_campaign_names=unique_campaign_names,
+                           unique_urls=unique_urls)
+
+
+@main.route('/manage-exclusions', methods=['GET', 'POST'])
+def manage_exclusions():
+    if request.method == 'POST':
+        for field_name in request.form:
+            if field_name.startswith('include_'):
+                option_type = field_name.replace('include_', '')
+                included_values = request.form.getlist(field_name)
+                for value in included_values:
+                    ExcludedOption.query.filter_by(option_type=option_type, option_value=value).delete()
+        db.session.commit()
+    exclusions = ExcludedOption.query.all()
+    print(exclusions)
+    excluded_campaign_sources = ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_sources[]').distinct().all()
+    excluded_campaign_mediums = ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_mediums[]').distinct().all()
+    excluded_campaign_contents = ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_contents[]').distinct().all()
+    excluded_campaign_names = ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_names[]').distinct().all()
+    excluded_urls = ExcludedOption.query.filter(ExcludedOption.option_type == 'urls[]').distinct().all()
+
+    return render_template('manage_exclusions.html',
+                           excluded_campaign_contents=excluded_campaign_contents,
+                           excluded_campaign_sources=excluded_campaign_sources,
+                           excluded_campaign_mediums=excluded_campaign_mediums,
+                           excluded_campaign_names=excluded_campaign_names,
+                           excluded_urls=excluded_urls)
+
+
+@main.route('/campaigns', methods=['GET'])
+def campaigns():
+    # Fetch all records and group them by campaign name
+    grouped_campaigns = db.session.query(
+        UTMLink.campaign_name,
+        func.group_concat(UTMLink.url).label('urls'),
+        func.group_concat(UTMLink.campaign_content).label('campaign_contents'),
+        func.group_concat(UTMLink.campaign_source).label('campaign_sources'),
+        func.group_concat(UTMLink.campaign_medium).label('campaign_mediums'),
+        func.group_concat(UTMLink.domain).label('domains'),
+        func.group_concat(UTMLink.slug).label('slugs'),
+        func.group_concat(UTMLink.short_id).label('short_ids'),
+        func.group_concat(UTMLink.short_secure_url).label('short_secure_urls'),
+        func.group_concat(UTMLink.clicks_count).label('clicks_counts'),
+        func.sum(cast(UTMLink.clicks_count, Integer)).label('total_clicks')
+    ).group_by(UTMLink.campaign_name).order_by(desc(UTMLink.id)).all()
+
+    return render_template('campaigns.html', grouped_campaigns=grouped_campaigns)
+
+
+@main.route('/import', methods=['GET'])
+def import_excel_data():
+    # Read Excel file into a pandas DataFrame
+    df = pd.read_excel("Link.xlsx")
+
+    # Iterate through DataFrame rows and add to the database
+    for index, row in df.iterrows():
+        utm_link = UTMLink(
+            url=row['url'],
+            campaign_content=row['campaign_content'],
+            campaign_source=row['campaign_source'],
+            campaign_medium=row['campaign_medium'],
+            campaign_name=row['campaign_name'],
+            domain=row['domain'],
+            slug=row['slug'],
+            short_id=row['short_id'],
+            short_secure_url=row['short_secure_url'],
+            clicks_count=row["clicks_count"]
+        )
+        db.session.add(utm_link)
+
+    # Commit changes to the database
+    db.session.commit()
+    return "Import success"
+
+
+@main.route('/filter_setting', methods=['GET', 'POST'])
+def filter_setting():
+    if request.method == 'POST':
+        # Retrieve form data, which may be partially filled
+        url = request.form.get('url')
+        campaign_source = request.form.get('campaign_source')
+        campaign_medium = request.form.get('campaign_medium')
+        campaign_name = request.form.get('campaign_name')
+        campaign_content = request.form.get('campaign_content')
+        date_from = request.form.get('date_from')
+        date_to = request.form.get('date_to')
+
+        # Start with a base query
+        query = UTMLink.query
+
+        # Apply filters only for fields that have been filled out
+        if url:
+            query = query.filter(UTMLink.url == url)
+        if campaign_source:
+            query = query.filter(UTMLink.campaign_source == campaign_source)
+        if campaign_medium:
+            query = query.filter(UTMLink.campaign_medium == campaign_medium)
+        if campaign_name:
+            query = query.filter(UTMLink.campaign_name == campaign_name)
+        if campaign_content:
+            query = query.filter(UTMLink.campaign_content == campaign_content)
+
+        # Execute the query
+        results = query.all()
+        for result in results:
+            result.clicks = get_clicks_filter(result.short_id, date_from, date_to)
+        # Calculate the total clicks, if applicable
+        total_clicks = sum(result.clicks for result in results)  # Modify as needed based on your data model
+
+        # Render the results page, passing in the results and total clicks
+        return render_template('filtered_utm.html', results=results, total_clicks=total_clicks)
+
+    if request.method == "GET":
+        # Query to get all unique campaign contents
+        unique_campaign_contents = UTMLink.query.with_entities(UTMLink.campaign_content).distinct().all()
+
+        # Query to get all unique campaign sources
+        unique_campaign_sources = UTMLink.query.with_entities(UTMLink.campaign_source).distinct().all()
+
+        # Query to get all unique campaign mediums
+        unique_campaign_mediums = UTMLink.query.with_entities(UTMLink.campaign_medium).distinct().all()
+
+        # Query to get all unique campaign names
+        unique_campaign_names = UTMLink.query.with_entities(UTMLink.campaign_name).distinct().all()
+
+        # Query to get all unique URLs
+        unique_urls = UTMLink.query.with_entities(UTMLink.url).distinct().all()
+
+        return render_template('filter_setting.html', unique_campaign_contents=unique_campaign_contents,
+                               unique_campaign_sources=unique_campaign_sources,
+                               unique_campaign_mediums=unique_campaign_mediums,
+                               unique_campaign_names=unique_campaign_names,
+                               unique_url=unique_urls)
+
+
+@main.route('/update-clicks', methods=['GET'])
+def update_clicks():
+    update_clicks_count()
+    return redirect("/campaigns")

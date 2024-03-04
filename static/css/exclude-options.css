@@ -1,0 +1,114 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f0f4f7;
+    color: #03396c;
+    margin: 0;
+    padding: 0;
+}
+
+.main-content {
+    margin-top: 50px;
+    max-width: 100%; /* Разрешаем блоку занимать всю доступную ширину */
+    width: 100%; /* Устанавливаем ширину в 100% от доступного пространства */
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0 20px; /* Добавляем небольшой внутренний отступ для содержимого */
+}
+
+
+.form-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Распределяем пространство на три равных столбца */
+    gap: 20px;
+    margin-bottom: 20px;
+    min-width:1200px
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.header {
+    background-color: #004A7F; /* ASUS dark blue */
+    color: #ffffff;
+    padding: 20px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.header a, .header span.campaign-name {
+    color: #ffffff;
+    text-decoration: none;
+    margin-right: 20px;
+    font-weight: 500;
+}
+
+.header span.campaign-name {
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 20px;
+}
+
+select[multiple] {
+    height: 200px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: white;
+}
+
+
+.form-group button {
+    height: 50px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.form-group button:hover {
+    background-color: #03396c;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group.half-width {
+    grid-column: span 1;
+}
+
+.exclude-button-container {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+button.update-exclusions {
+    padding: 10px 20px;
+    width: 200px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 auto;
+    display: block;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button.update-exclusions:hover {
+    background-color: #03396c;
+}
