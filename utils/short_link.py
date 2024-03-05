@@ -1,5 +1,5 @@
 import json
-
+from collections import defaultdict
 import requests
 
 from app import db
@@ -66,3 +66,31 @@ def get_clicks_filter(short_id,startDate,endDate):
         return clicks
     else:
         return 0
+
+
+def aggregate_clicks(short_ids, startDate, endDate):
+    # Используйте defaultdict для удобства суммирования значений по одинаковым ключам
+    clicks_aggregated = defaultdict(int)
+    clicks_by_short_id = {}
+    os_aggregated = defaultdict(int)
+    for short_id in short_ids:
+        url = f"https://api-v2.short.io/statistics/link/{short_id}"
+        querystring = {"period": "custom", "tzOffset": "0", 'startDate': startDate, "endDate": endDate}
+        headers = {
+            'accept': "*/*",
+            'authorization': 'sk_BNIl8NH1FEMMaVxF'
+        }
+
+        response = requests.get(url, headers=headers, params=querystring)
+        if response.status_code == 200:
+            data = response.json()
+            clicks_by_short_id[short_id] = data.get("humanClicks", 0)
+            for entry in data.get("clickStatistics", {}).get("datasets", [])[0].get("data", []):
+                clicks_aggregated[entry["x"][:10]] += int(entry["y"])  # Суммируем клики по датам
+            for os_data in data.get('os', []):
+                os_aggregated[os_data['os']] += os_data['score']
+
+    # Преобразование данных для использования в графике
+    os_data_for_chart = [{'os': os, 'score': score} for os, score in os_aggregated.items()]
+    clicks_data = [{'x': date, 'y': clicks} for date, clicks in clicks_aggregated.items()]
+    return sorted(clicks_data, key=lambda x: x['x']),clicks_by_short_id,os_data_for_chart  # Сортировка данных по дате

@@ -5,8 +5,7 @@ from sqlalchemy import func, Integer, desc, cast
 from app import db
 from models.models import UTMLink, ExcludedOption
 from utils.db_utils import extract_first_if_tuple
-from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter
-
+from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks
 main = Blueprint('main', __name__, )
 
 
@@ -81,7 +80,7 @@ def index():
             if short_url.get('error'):
                 # Handle error case (e.g., log the error, display an error message)
                 error_message = short_url['error']
-                print(f"Error creating short link: {error_message}")
+
             else:
                 # Update the database with short link information
                 short_id = short_url['idString']
@@ -194,8 +193,6 @@ def manage_exclusions():
                 for value in included_values:
                     ExcludedOption.query.filter_by(option_type=option_type, option_value=value).delete()
         db.session.commit()
-    exclusions = ExcludedOption.query.all()
-    print(exclusions)
     excluded_campaign_sources = ExcludedOption.query.filter(
         ExcludedOption.option_type == 'campaign_sources[]').distinct().all()
     excluded_campaign_mediums = ExcludedOption.query.filter(
@@ -289,13 +286,15 @@ def filter_setting():
 
         # Execute the query
         results = query.all()
-        for result in results:
-            result.clicks = get_clicks_filter(result.short_id, date_from, date_to)
-        # Calculate the total clicks, if applicable
-        total_clicks = sum(result.clicks for result in results)  # Modify as needed based on your data model
+        short_ids = [result.short_id for result in results]
+        clicks_data, clicks_by_line, os_data_for_chart = aggregate_clicks(short_ids, date_from, date_to)
 
+        for result in results:
+            result.clicks = clicks_by_line.get(result.short_id, 0)
+
+        total_clicks = sum(clicks_by_line.values())
         # Render the results page, passing in the results and total clicks
-        return render_template('filtered_utm.html', results=results, total_clicks=total_clicks)
+        return render_template('filtered_utm.html', results=results, total_clicks=total_clicks,clicks_data=clicks_data,os_data=os_data_for_chart)
 
     if request.method == "GET":
         # Query to get all unique campaign contents
