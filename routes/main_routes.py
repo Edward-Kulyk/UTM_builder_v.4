@@ -260,29 +260,29 @@ def import_excel_data():
 @main.route('/filter_setting', methods=['GET', 'POST'])
 def filter_setting():
     if request.method == 'POST':
-        # Retrieve form data, which may be partially filled
-        url = request.form.get('url')
-        campaign_source = request.form.get('campaign_source')
-        campaign_medium = request.form.get('campaign_medium')
-        campaign_name = request.form.get('campaign_name')
-        campaign_content = request.form.get('campaign_content')
+        # Используйте .getlist() вместо .get() для получения всех выбранных значений
+        urls = request.form.getlist('url')
+        campaign_sources = request.form.getlist('campaign_source')
+        campaign_mediums = request.form.getlist('campaign_medium')
+        campaign_names = request.form.getlist('campaign_name')
+        campaign_contents = request.form.getlist('campaign_content')
         date_from = request.form.get('date_from')
         date_to = request.form.get('date_to')
 
-        # Start with a base query
+        # Начинаем с базового запроса
         query = UTMLink.query
 
-        # Apply filters only for fields that have been filled out
-        if url:
-            query = query.filter(UTMLink.url == url)
-        if campaign_source:
-            query = query.filter(UTMLink.campaign_source == campaign_source)
-        if campaign_medium:
-            query = query.filter(UTMLink.campaign_medium == campaign_medium)
-        if campaign_name:
-            query = query.filter(UTMLink.campaign_name == campaign_name)
-        if campaign_content:
-            query = query.filter(UTMLink.campaign_content == campaign_content)
+        # Применяем фильтры только для заполненных полей
+        if urls:
+            query = query.filter(UTMLink.url.in_(urls))
+        if campaign_sources:
+            query = query.filter(UTMLink.campaign_source.in_(campaign_sources))
+        if campaign_mediums:
+            query = query.filter(UTMLink.campaign_medium.in_(campaign_mediums))
+        if campaign_names:
+            query = query.filter(UTMLink.campaign_name.in_(campaign_names))
+        if campaign_contents:
+            query = query.filter(UTMLink.campaign_content.in_(campaign_contents))
 
         # Execute the query
         results = query.all()
