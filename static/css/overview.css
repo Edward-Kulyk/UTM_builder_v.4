@@ -16,6 +16,19 @@ body {
     font-family: 'Roboto', sans-serif;
 }
 
+.editing td {
+        border: 1px solid #ccc; /* Добавляем границу для каждой ячейки */
+        background-color: #d9d9d9; /* Делаем фон ячеек темнее */
+    }
+
+
+/* Стили для маленьких изображений в кнопках */
+img {
+    height: 20px; /* Задайте желаемую ширину */
+
+}
+
+
 .header a, .header span.campaign-name {
     color: #ffffff;
     text-decoration: none;
@@ -54,6 +67,10 @@ th, td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    width: auto; /* или любое другое значение, которое вы хотите установить */
+}
+table td:last-child {
+    white-space: nowrap;
 }
 
 th {

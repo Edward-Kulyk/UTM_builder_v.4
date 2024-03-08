@@ -1,11 +1,12 @@
 import pandas as pd
-from flask import Blueprint, request, render_template, redirect
+from flask import Blueprint, request, render_template, redirect, jsonify
 from sqlalchemy import func, Integer, desc, cast
 
 from app import db
 from models.models import UTMLink, ExcludedOption
 from utils.db_utils import extract_first_if_tuple
-from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks
+from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks,edit_link,delete_link
+
 main = Blueprint('main', __name__, )
 
 
@@ -294,7 +295,8 @@ def filter_setting():
 
         total_clicks = sum(clicks_by_line.values())
         # Render the results page, passing in the results and total clicks
-        return render_template('filtered_utm.html', results=results, total_clicks=total_clicks,clicks_data=clicks_data,os_data=os_data_for_chart)
+        return render_template('filtered_utm.html', results=results, total_clicks=total_clicks, clicks_data=clicks_data,
+                               os_data=os_data_for_chart)
 
     if request.method == "GET":
         # Query to get all unique campaign contents
@@ -323,3 +325,31 @@ def filter_setting():
 def update_clicks():
     update_clicks_count()
     return redirect("/campaigns")
+
+
+@main.route('/edit-row/<string:id>', methods=['POST'])
+def edit_record(id):
+    data = request.json
+    record = UTMLink.query.filter_by(short_id=str(id)).first()
+    if record:
+        record.url = data['url']
+        record.campaign_source = data['campaign_source']
+        record.campaign_medium = data['campaign_medium']
+        record.campaign_content = data.get('campaign_content')  # Используйте .get для необязательных полей
+        db.session.commit()
+        edit_link(record.id)
+        return jsonify({'status': 'success', 'message': 'Record updated successfully'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Record not found'})
+
+
+@main.route('/delete-row/<string:id>', methods=['POST'])
+def delete_record(id):
+    record = UTMLink.query.filter_by(short_id=str(id)).first()
+    if record:
+        delete_link(record.short_id)
+        db.session.delete(record)
+        db.session.commit()
+        return jsonify({'status': 'success', 'message': 'Record deleted successfully'})
+    else:
+        return jsonify({'status': 'error', 'message': 'Record not found'})
