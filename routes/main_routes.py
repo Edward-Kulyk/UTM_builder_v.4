@@ -385,7 +385,7 @@ def add_data_stamp():
     text_color = (255, 255, 255)  # White
 
     # Adjust text positioning a bit higher and to the right
-    x_adjust = 20  # Increase for further right
+    x_adjust = 40  # Increase for further right
     y_adjust = 20  # Increase for higher
     x = img.width - (relative_font_size * len(text) // 2) - x_adjust
     y = img.height - (relative_font_size * 2) - y_adjust
