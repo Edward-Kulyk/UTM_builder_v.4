@@ -1,11 +1,15 @@
 import pandas as pd
-from flask import Blueprint, request, render_template, redirect, jsonify
+from flask import Blueprint, request, render_template, redirect, jsonify, send_file
 from sqlalchemy import func, Integer, desc, cast
 
 from app import db
 from models.models import UTMLink, ExcludedOption
 from utils.db_utils import extract_first_if_tuple
-from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks,edit_link,delete_link
+from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks, edit_link, \
+    delete_link
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+import datetime
 
 main = Blueprint('main', __name__, )
 
@@ -353,3 +357,45 @@ def delete_record(id):
         return jsonify({'status': 'success', 'message': 'Record deleted successfully'})
     else:
         return jsonify({'status': 'error', 'message': 'Record not found'})
+
+
+@main.route('/data-stamp', methods=['GET'])
+def data_stamp():
+    return render_template("data-stamp.html")
+
+
+@main.route('/add_data_stamp', methods=['POST'])
+def add_data_stamp():
+    photo = request.files['photo']
+    date_str = request.form['date']
+    date = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+
+    img = Image.open(photo.stream)
+    if img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    draw = ImageDraw.Draw(img)
+
+    # Using a relative font size based on the image height, ensuring it's readable
+    relative_font_size = int(min(img.size) / 20)
+    font_path = "arial.ttf"  # Make sure this path is correct for your setup
+    font = ImageFont.truetype(font_path, relative_font_size)
+
+    text = date.strftime('%Y-%m-%d')
+    text_color = (255, 255, 255)  # White
+
+    # Adjust text positioning a bit higher and to the right
+    x_adjust = 20  # Increase for further right
+    y_adjust = 20  # Increase for higher
+    x = img.width - (relative_font_size * len(text) // 2) - x_adjust
+    y = img.height - (relative_font_size * 2) - y_adjust
+
+    # Adding a simple shadow for legibility
+    draw.text((x + 1, y + 1), text, font=font, fill=(0, 0, 0))  # Black shadow
+    draw.text((x, y), text, font=font, fill=text_color)
+
+    img_bytes = BytesIO()
+    img.save(img_bytes, 'JPEG')  # Ensure to save as RGB for JPEG
+    img_bytes.seek(0)
+
+    return send_file(img_bytes, mimetype='image/jpeg', as_attachment=True, download_name='modified_image.jpg')
