@@ -99,9 +99,7 @@ def aggregate_clicks(short_ids, startDate, endDate):
             response = requests.get(url, headers=headers, params=querystring)
             if response.status_code == 429:
                 time.sleep(2 ** attempt)  # Экспоненциальная задержка
-                print("Пососал, но попробую снова")
             elif response.status_code == 200:
-                print("Успешный успех")
                 data = response.json()
                 clicks_by_short_id[short_id] = data.get("humanClicks", 0)
                 for entry in data.get("clickStatistics", {}).get("datasets", [])[0].get("data", []):
@@ -110,7 +108,6 @@ def aggregate_clicks(short_ids, startDate, endDate):
                     os_aggregated[os_data['os']] += os_data['score']
                 break  # Прерываем цикл после успешного запроса
             else:
-                print(f"Failed to fetch data for short_id {short_id}. Status code: {response.status_code}")
                 break  # Прерываем цикл при других ошибках
 
     # Преобразование данных для использования в графике

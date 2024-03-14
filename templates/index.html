@@ -12,6 +12,16 @@
         <div class="error-message" style="color: red; font-weight: bold;">{{ error_message }}</div>
     {% endif %}
     <form method="post" action="/" oninput="updateUtmLink()">
+
+        <label for="campaign_name">Campaign Name:</label>
+        <select name="campaign_name" id="campaign_name" onchange="toggleOtherInput('campaign_name', 'campaign_name_other')" required>
+            <option value="" disabled selected>Select or Enter Campaign Name</option>
+            {% for name in unique_campaign_names %}
+                <option value="{{ name }}">{{ name }}</option>
+            {% endfor %}
+        </select>
+
+
         <label for="url">URL:</label>
         <select name="url" id="url" onchange="toggleOtherInput('url', 'url_other')" required>
           <option value="" disabled selected>Select or Enter url</option>
@@ -41,15 +51,6 @@
             <option value="other">Other</option>
         </select>
         <input type="text" name="campaign_medium_other" id="campaign_medium_other" placeholder="Enter new value" style="display: none;"><br>
-
-        <label for="campaign_name">Campaign Name:</label>
-        <select name="campaign_name" id="campaign_name" onchange="toggleOtherInput('campaign_name', 'campaign_name_other')" required>
-            <option value="" disabled selected>Select or Enter Campaign Name</option>
-            {% for name in unique_campaign_names %}
-                <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-            <option value="other">Other</option>
-        </select>
 
         <input type="text" name="campaign_name_other" id="campaign_name_other" placeholder="Enter new value" style="display: none;"><br>
                 <label for="campaign_content">Campaign content:</label>
