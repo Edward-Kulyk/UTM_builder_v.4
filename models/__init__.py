@@ -1,1 +1,1 @@
-from .models import UTMLink, ExcludedOption
+from .models import UTMLink, ExcludedOption, Campaign

@@ -44,3 +44,36 @@ function getSelectedValue(selectId, inputId) {
 document.addEventListener('DOMContentLoaded', function() {
     new ClipboardJS('#copyButton');
 });
+
+// Функция для отправки запроса на сервер и получения значений по умолчанию
+function getDefaultValues(campaignName) {
+    fetch('/get_default_values', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 'campaign_name': campaignName }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Установка полученных значений по умолчанию
+        document.getElementById("url").value = data.url_by_default;
+        document.getElementById("domain").value = data.domain_by_default;
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+}
+
+// Обработчик выбора названия кампании
+document.getElementById("campaign_name").addEventListener('change', function() {
+    var selectedCampaign = this.value;
+    if (selectedCampaign === 'other') {
+        // Если выбрано "Other", показываем поле для ввода своего значения
+        document.getElementById("campaign_name_other").style.display = "block";
+    } else {
+        // Иначе, скрываем поле для ввода своего значения и отправляем запрос на сервер для получения значений по умолчанию
+        document.getElementById("campaign_name_other").style.display = "none";
+        getDefaultValues(selectedCampaign);
+    }
+});
