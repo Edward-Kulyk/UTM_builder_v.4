@@ -11,9 +11,16 @@ class UTMLink(db.Model):
     campaign_content = db.Column(db.String(50), nullable=True)
     campaign_source = db.Column(db.String(50), nullable=False)
     campaign_medium = db.Column(db.String(50), nullable=False)
-    campaign_name = db.Column(db.String(50), nullable=False)
+    campaign_name = db.Column(db.String(50), db.ForeignKey('campaign.name'), nullable=False)
     domain = db.Column(db.String(20), nullable=False)
     slug = db.Column(db.String(50), nullable=False)
     short_id = db.Column(db.String(20), nullable=True)
     short_secure_url = db.Column(db.String(20), nullable=True)
     clicks_count = db.Column(db.Integer, default=0)
+
+class Campaign(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    url_by_default = db.Column(db.String(255), nullable=True)
+    domain_by_default = db.Column(db.String(20), nullable=True)
+    start_date = db.Column(db.Date, nullable=False)

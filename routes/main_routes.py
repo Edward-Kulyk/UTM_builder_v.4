@@ -1,15 +1,16 @@
+import datetime
+from io import BytesIO
+
 import pandas as pd
+from PIL import Image, ImageDraw, ImageFont
 from flask import Blueprint, request, render_template, redirect, jsonify, send_file
 from sqlalchemy import func, Integer, desc, cast
 
 from app import db
 from models.models import UTMLink, ExcludedOption
 from utils.db_utils import extract_first_if_tuple
-from utils.short_link import update_clicks_count, create_short_link, get_clicks_filter, aggregate_clicks, edit_link, \
+from utils.short_link import update_clicks_count, create_short_link, aggregate_clicks, edit_link, \
     delete_link
-from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
-import datetime
 
 main = Blueprint('main', __name__, )
 
@@ -289,7 +290,7 @@ def filter_setting():
         if campaign_contents:
             query = query.filter(UTMLink.campaign_content.in_(campaign_contents))
 
-        # Execute the query
+        # Выполняем запрос
         results = query.all()
         short_ids = [result.short_id for result in results]
         clicks_data, clicks_by_line, os_data_for_chart = aggregate_clicks(short_ids, date_from, date_to)
@@ -399,3 +400,8 @@ def add_data_stamp():
     img_bytes.seek(0)
 
     return send_file(img_bytes, mimetype='image/jpeg', as_attachment=True, download_name='modified_image.jpg')
+
+
+@main.route('/add_campaign', methods=['GET', 'POST'])
+def add_campaign():
+    return render_template("campaign_creation.html")
