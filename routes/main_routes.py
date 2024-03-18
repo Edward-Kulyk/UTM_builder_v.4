@@ -1,13 +1,15 @@
 import datetime
 from io import BytesIO
 
+from datetime import date, datetime
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 from flask import Blueprint, request, render_template, redirect, jsonify, send_file
 from sqlalchemy import func, Integer, desc, cast
+from sqlalchemy.orm import aliased
 
 from app import db
-from models.models import UTMLink, ExcludedOption
+from models.models import UTMLink, ExcludedOption, Campaign
 from utils.db_utils import extract_first_if_tuple
 from utils.short_link import update_clicks_count, create_short_link, aggregate_clicks, edit_link, \
     delete_link
@@ -23,15 +25,17 @@ def index():
 
     excluded_campaign_sources = [option[0] for option in ExcludedOption.query.filter(
         ExcludedOption.option_type == 'campaign_sources[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
     excluded_campaign_mediums = [option[0] for option in ExcludedOption.query.filter(
         ExcludedOption.option_type == 'campaign_mediums[]').with_entities(ExcludedOption.option_value).distinct().all()]
+
+    excluded_campaign_names = [option[0] for option in ExcludedOption.query.filter(
+        ExcludedOption.option_type == 'campaign_names[]').with_entities(
+        ExcludedOption.option_value).distinct().all()]
 
     excluded_campaign_contents = [option[0] for option in ExcludedOption.query.filter(
         ExcludedOption.option_type == 'campaign_contents[]').with_entities(
         ExcludedOption.option_value).distinct().all()]
-
-    excluded_campaign_names = [option[0] for option in ExcludedOption.query.filter(
-        ExcludedOption.option_type == 'campaign_names[]').with_entities(ExcludedOption.option_value).distinct().all()]
 
     excluded_urls = [option[0] for option in ExcludedOption.query.filter(
         ExcludedOption.option_type == 'urls[]').with_entities(ExcludedOption.option_value).distinct().all()]
@@ -39,7 +43,6 @@ def index():
     excluded_campaign_sources = extract_first_if_tuple(excluded_campaign_sources)
     excluded_campaign_mediums = extract_first_if_tuple(excluded_campaign_mediums)
     excluded_campaign_contents = extract_first_if_tuple(excluded_campaign_contents)
-    excluded_campaign_names = extract_first_if_tuple(excluded_campaign_names)
     excluded_urls = extract_first_if_tuple(excluded_urls)
 
     if request.method == 'POST':
@@ -113,8 +116,8 @@ def index():
     unique_campaign_contents = [content[0] for content in UTMLink.query.with_entities(UTMLink.campaign_content)
     .filter(UTMLink.campaign_content.notin_(excluded_campaign_contents)).distinct().all()]
 
-    unique_campaign_names = [name[0] for name in UTMLink.query.with_entities(UTMLink.campaign_name)
-    .filter(UTMLink.campaign_name.notin_(excluded_campaign_names)).distinct().all()]
+    unique_campaign_names = [name[0] for name in Campaign.query.with_entities(Campaign.name)
+    .filter(Campaign.name.notin_(excluded_campaign_names)).distinct().all()]
 
     unique_urls = [url[0] for url in UTMLink.query.with_entities(UTMLink.url)
     .filter(UTMLink.url.notin_(excluded_urls)).distinct().all()]
@@ -155,7 +158,8 @@ def exclude_options():
         ExcludedOption.option_value).distinct().all()]
 
     excluded_campaign_names = [option[0] for option in ExcludedOption.query.filter(
-        ExcludedOption.option_type == 'campaign_names[]').with_entities(ExcludedOption.option_value).distinct().all()]
+        ExcludedOption.option_type == 'campaign_names[]').with_entities(
+        ExcludedOption.option_value).distinct().all()]
 
     excluded_urls = [option[0] for option in ExcludedOption.query.filter(
         ExcludedOption.option_type == 'urls[]').with_entities(ExcludedOption.option_value).distinct().all()]
@@ -175,8 +179,8 @@ def exclude_options():
     unique_campaign_contents = [content[0] for content in UTMLink.query.with_entities(UTMLink.campaign_content)
     .filter(UTMLink.campaign_content.notin_(excluded_campaign_contents)).distinct().all()]
 
-    unique_campaign_names = [name[0] for name in UTMLink.query.with_entities(UTMLink.campaign_name)
-    .filter(UTMLink.campaign_name.notin_(excluded_campaign_names)).distinct().all()]
+    unique_campaign_names = [name[0] for name in Campaign.query.with_entities(Campaign.name)
+    .filter(Campaign.name.notin_(excluded_campaign_names)).distinct().all()]
 
     unique_urls = [url[0] for url in UTMLink.query.with_entities(UTMLink.url)
     .filter(UTMLink.url.notin_(excluded_urls)).distinct().all()]
@@ -219,20 +223,32 @@ def manage_exclusions():
 
 @main.route('/campaigns', methods=['GET'])
 def campaigns():
-    # Fetch all records and group them by campaign name
+    utm_link = aliased(UTMLink)
+    campaign = aliased(Campaign)
+
+    # Получаем все записи, группируем их по названию кампании
     grouped_campaigns = db.session.query(
-        UTMLink.campaign_name,
-        func.group_concat(UTMLink.url).label('urls'),
-        func.group_concat(UTMLink.campaign_content).label('campaign_contents'),
-        func.group_concat(UTMLink.campaign_source).label('campaign_sources'),
-        func.group_concat(UTMLink.campaign_medium).label('campaign_mediums'),
-        func.group_concat(UTMLink.domain).label('domains'),
-        func.group_concat(UTMLink.slug).label('slugs'),
-        func.group_concat(UTMLink.short_id).label('short_ids'),
-        func.group_concat(UTMLink.short_secure_url).label('short_secure_urls'),
-        func.group_concat(UTMLink.clicks_count).label('clicks_counts'),
-        func.sum(cast(UTMLink.clicks_count, Integer)).label('total_clicks')
-    ).group_by(UTMLink.campaign_name).order_by(desc(UTMLink.id)).all()
+        utm_link.campaign_name,
+        func.group_concat(utm_link.campaign_content).label('campaign_contents'),
+        func.group_concat(utm_link.campaign_source).label('campaign_sources'),
+        func.group_concat(utm_link.campaign_medium).label('campaign_mediums'),
+        func.group_concat(utm_link.domain).label('domains'),
+        func.group_concat(utm_link.slug).label('slugs'),
+        func.group_concat(utm_link.short_id).label('short_ids'),
+        func.group_concat(utm_link.short_secure_url).label('short_secure_urls'),
+        # Агрегированные строки значений кликов
+        func.group_concat(utm_link.clicks_count).label('clicks_counts'),
+        func.group_concat(utm_link.clicks_count24h).label('clicks_counts_24h'),
+        func.group_concat(utm_link.clicks_count1w).label('clicks_counts_1w'),
+        func.group_concat(utm_link.clicks_count2w).label('clicks_counts_2w'),
+        func.group_concat(utm_link.clicks_count3w).label('clicks_counts_3w'),
+        # Суммарные значения кликов за разные периоды
+        func.sum(cast(utm_link.clicks_count, Integer)).label('total_clicks'),
+        func.sum(cast(utm_link.clicks_count24h, Integer)).label('total_clicks_24h'),
+        func.sum(cast(utm_link.clicks_count1w, Integer)).label('total_clicks_1w'),
+        func.sum(cast(utm_link.clicks_count2w, Integer)).label('total_clicks_2w'),
+        func.sum(cast(utm_link.clicks_count3w, Integer)).label('total_clicks_3w')
+    ).join(campaign).filter(campaign.hide != True).group_by(utm_link.campaign_name).order_by(desc(utm_link.id)).all()
 
     return render_template('campaigns.html', grouped_campaigns=grouped_campaigns)
 
@@ -404,4 +420,96 @@ def add_data_stamp():
 
 @main.route('/add_campaign', methods=['GET', 'POST'])
 def add_campaign():
+    # Получение данных из формы
+    name = request.form['name']
+    start_date = request.form['start_date']
+    url_by_default = request.form['url_by_default']
+    domain_by_default = request.form['domain_by_default']
+
+    # Создание объекта кампании
+    new_campaign = Campaign(name=name, start_date=start_date, url_by_default=url_by_default,
+                            domain_by_default=domain_by_default)
+
+    # Добавление кампании в базу данных
+    db.session.add(new_campaign)
+    db.session.commit()
     return render_template("campaign_creation.html")
+
+@main.route('/get_default_values', methods=['POST'])
+def get_default_values():
+    campaign_name = request.json['campaign_name']
+    default_values = Campaign.query.filter_by(name=campaign_name).first()
+    return jsonify({
+        'url_by_default': default_values.url_by_default,
+        'domain_by_default': default_values.domain_by_default
+    })
+
+@main.route('/edit_campaing_name_list', methods=['GET'])
+def edit_campaing_name_list():
+    campaigns = Campaign.query.all()
+    return render_template('campaign_name_list.html', campaigns=campaigns)
+
+
+@main.route('/edit-campaign-row/<int:id>', methods=['POST'])
+def edit_row(id):
+    # Получаем данные из запроса
+    data = request.json
+    start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+    data['hide'] = False if data['hide'].lower() == 'false' else True
+    # Находим запись в базе данных по переданному id
+    campaign = Campaign.query.get(id)
+
+    # Обновляем данные кампании
+    campaign.name = data['name']
+    campaign.url_by_default = data['url_by_default']
+    campaign.domain_by_default = data['domain_by_default']
+    campaign.start_date = start_date
+    campaign.hide = data['hide']
+
+    # Сохраняем изменения
+    db.session.commit()
+
+    # Отправляем ответ клиенту
+    return jsonify({'status': 'success', 'message': 'Row updated successfully'})
+
+# def fill_campaign_table():
+#     unique_campaigns = UTMLink.query.with_entities(UTMLink.campaign_name).distinct().all()
+#
+#     for campaign in unique_campaigns:
+#         campaign_name = campaign[0]
+#         # Предположим, что домен и ссылка для каждой кампании одинаковы
+#         domain, default_url = UTMLink.query.filter_by(campaign_name=campaign_name).first().domain, \
+#                               UTMLink.query.filter_by(campaign_name=campaign_name).first().url
+#         start_date=date(2024, 3, 14)
+#         new_campaign = Campaign(name=campaign_name, domain_by_default=domain, url_by_default=default_url, start_date=start_date)
+#         db.session.add(new_campaign)
+#
+#     db.session.commit()
+#
+# fill_campaign_table()
+
+# def reset_clicks_count():
+#     try:
+#         # Обновляем все записи, устанавливая счетчики кликов на 0
+#         UTMLink.query.update({
+#             UTMLink.clicks_count: 0,
+#             UTMLink.clicks_count24h: 0,
+#             UTMLink.clicks_count1w: 0,
+#             UTMLink.clicks_count2w: 0,
+#             UTMLink.clicks_count3w: 0
+#         })
+#         db.session.commit()
+#         print("Все счетчики кликов были успешно сброшены.")
+#     except Exception as e:
+#         db.session.rollback()
+#         print(f"Произошла ошибка при сбросе счетчиков кликов: {e}")
+#
+# reset_clicks_count()
+
+
+# ALTER TABLE utm_link ADD COLUMN clicks_count24h INTEGER DEFAULT 0;
+# ALTER TABLE utm_link ADD COLUMN clicks_count1w INTEGER DEFAULT 0;
+# ALTER TABLE utm_link ADD COLUMN clicks_count2w INTEGER DEFAULT 0;
+# ALTER TABLE utm_link ADD COLUMN clicks_count3w INTEGER DEFAULT 0;
+
+# ALTER TABLE Campaign ADD COLUMN hide boolean DEFAULT False;

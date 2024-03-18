@@ -14,31 +14,40 @@
         <table>
             <thead>
                 <tr>
-                    <th>URLs</th>
+                    <th>Short Secure URLs</th>
                     <th>Campaign Contents</th>
                     <th>Campaign Sources</th>
                     <th>Campaign Mediums</th>
-                    <th>Short Secure URLs</th>
-                    <th>Clicks Counts</th>
+                    <th>Clicks 24h</th>
+                    <th>Clicks W1</th>
+                    <th>Clicks W2</th>
+                    <th>Clicks W3</th>
+                    <th>Total Clicks</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% set urls_list = campaign_data.urls.split(',') %}
                 {% set campaign_contents_list = campaign_data.campaign_contents.split(',') %}
                 {% set campaign_sources_list = campaign_data.campaign_sources.split(',') %}
                 {% set campaign_mediums_list = campaign_data.campaign_mediums.split(',') %}
                 {% set short_secure_urls_list = campaign_data.short_secure_urls.split(',') %}
                 {% set short_ids_list = campaign_data.short_ids.split(',') %}
                 {% set clicks_counts_list = campaign_data.clicks_counts.split(',') %}
+                {% set campaign_clicks24 = campaign_data.clicks_counts_24h.split(',') %}
+                {% set campaign_clicks1w = campaign_data.clicks_counts_1w.split(',') %}
+                {% set campaign_clicks2w = campaign_data.clicks_counts_2w.split(',') %}
+                {% set campaign_clicks3w = campaign_data.clicks_counts_3w.split(',') %}
 
-                {% for i in range(urls_list | length) %}
+                {% for i in range(short_secure_urls_list | length) %}
                     <tr id="row-{{ short_ids_list[i] }}">
-                        <td>{{ urls_list[i] }}</td>
+                        <td>{{ short_secure_urls_list[i] }}</td>
                         <td>{{ campaign_contents_list[i] }}</td>
                         <td>{{ campaign_sources_list[i] }}</td>
                         <td>{{ campaign_mediums_list[i] }}</td>
-                        <td>{{ short_secure_urls_list[i] }}</td>
+                        <td>{{ campaign_clicks24[i] }}</td>
+                        <td>{{ campaign_clicks1w[i] }}</td>
+                        <td>{{ campaign_clicks2w[i] }}</td>
+                        <td>{{ campaign_clicks3w[i] }}</td>
                         <td>{{ clicks_counts_list[i] }}</td>
                         <td>
                             <!-- Добавление кнопок редактирования и удаления для каждой строки -->
@@ -48,7 +57,11 @@
                     </tr>
                 {% endfor %}
                 <tr class="total-clicks">
-                    <td colspan="5">Total Clicks</td>
+                    <td colspan="4">Total Clicks</td>
+                    <td>{{ campaign_data.total_clicks_24h }}</td>
+                    <td>{{ campaign_data.total_clicks_1w }}</td>
+                    <td>{{ campaign_data.total_clicks_2w }}</td>
+                    <td>{{ campaign_data.total_clicks_3w }}</td>
                     <td>{{ campaign_data.total_clicks }}</td>
                 </tr>
             </tbody>

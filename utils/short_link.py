@@ -1,14 +1,14 @@
 import json
 from collections import defaultdict
 import requests
-
+from datetime import datetime, timedelta
+from sqlalchemy.orm import joinedload
 from app import db
 from config import Config
-from models import UTMLink
+from models import UTMLink, Campaign
 from collections import defaultdict
 import requests
 import time
-from config import Config
 
 
 def create_short_link(domain, slug, long_url):
@@ -37,33 +37,67 @@ def create_short_link(domain, slug, long_url):
 
 
 def update_clicks_count():
-    utm_links = UTMLink.query.all()
+    # Получаем ссылки и связанные кампании
+    utm_links = UTMLink.query. \
+        join(Campaign, UTMLink.campaign_name == Campaign.name). \
+        filter(Campaign.hide == False).all()
+
+    current_date = datetime.utcnow().date()
 
     for utm_link in utm_links:
-        url = f"https://api-v2.short.io/statistics/link/{utm_link.short_id}"
-        querystring = {"period": "total", "tzOffset": "0"}
+        campaign_start_date = utm_link.campaign.start_date
 
-        headers = {
-            'accept': "*/*",
-            'authorization': Config.SHORT_IO_API_KEY
-        }
+        # Определяем конечные даты для каждого периода
+        end_date_24h = campaign_start_date + timedelta(days=1)
+        end_date_1w = campaign_start_date + timedelta(weeks=1)
+        end_date_2w = campaign_start_date + timedelta(weeks=2)
+        end_date_3w = campaign_start_date + timedelta(weeks=3)
 
-        for attempt in range(5):  # Попытаемся до 5 раз при ошибке 429
-            response = requests.get(url, headers=headers, params=querystring)
-            if response.status_code == 429:
-                time.sleep(2 ** attempt)  # Экспоненциальная задержка
-            elif response.status_code == 200:
-                clicks = response.json().get("humanClicks", 0)
-                utm_link.clicks_count = clicks
-                db.session.commit()
-                break
-            else:
-                break  # Прерываем цикл при других ошибках
+        # Общее количество кликов с начала кампании до текущего момента
+        utm_link.clicks_count = get_clicks_total(utm_link.short_id)
+
+        # Клики за первые сутки
+        if current_date >= end_date_24h:
+            utm_link.clicks_count24h = get_clicks_filter(utm_link.short_id, campaign_start_date, end_date_24h)
+
+        # Клики за первую неделю
+        if current_date >= end_date_1w:
+            utm_link.clicks_count1w = get_clicks_filter(utm_link.short_id, campaign_start_date, end_date_1w)
+
+        # Клики за вторую неделю
+        if current_date >= end_date_2w:
+            utm_link.clicks_count2w = get_clicks_filter(utm_link.short_id, campaign_start_date, end_date_2w)
+
+        # Клики за третью неделю
+        if current_date >= end_date_3w:
+            utm_link.clicks_count3w = get_clicks_filter(utm_link.short_id, campaign_start_date, end_date_3w)
+
+        # Сохраняем изменения в базе данных
+        db.session.commit()
 
 
 def get_clicks_filter(short_id, startDate, endDate):
     url = f"https://api-v2.short.io/statistics/link/{short_id}"
     querystring = {"period": "custom", "tzOffset": "0", 'startDate': startDate, "endDate": endDate}
+
+    headers = {
+        'accept': "*/*",
+        'authorization': Config.SHORT_IO_API_KEY
+    }
+
+    for attempt in range(5):  # Попытаемся до 5 раз при ошибке 429
+        response = requests.get(url, headers=headers, params=querystring)
+        if response.status_code == 429:
+            time.sleep(2 ** attempt)  # Экспоненциальная задержка
+        elif response.status_code == 200:
+            clicks = response.json().get("humanClicks", 0)
+            return clicks
+        else:
+            return 0  # Возвращаем 0 при других ошибках
+
+def get_clicks_total(short_id):
+    url = f"https://api-v2.short.io/statistics/link/{short_id}"
+    querystring = {"period": "total", "tzOffset": "0",}
 
     headers = {
         'accept': "*/*",
