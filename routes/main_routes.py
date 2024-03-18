@@ -8,6 +8,7 @@ from flask import Blueprint, request, render_template, redirect, jsonify, send_f
 from sqlalchemy import func, Integer, desc, cast
 from sqlalchemy.orm import aliased
 
+import openpyxl
 from app import db
 from models.models import UTMLink, ExcludedOption, Campaign
 from utils.db_utils import extract_first_if_tuple
@@ -236,6 +237,7 @@ def campaigns():
         func.group_concat(utm_link.slug).label('slugs'),
         func.group_concat(utm_link.short_id).label('short_ids'),
         func.group_concat(utm_link.short_secure_url).label('short_secure_urls'),
+        campaign.start_date.label('start_date'),
         # Агрегированные строки значений кликов
         func.group_concat(utm_link.clicks_count).label('clicks_counts'),
         func.group_concat(utm_link.clicks_count24h).label('clicks_counts_24h'),
@@ -270,7 +272,11 @@ def import_excel_data():
             slug=row['slug'],
             short_id=row['short_id'],
             short_secure_url=row['short_secure_url'],
-            clicks_count=row["clicks_count"]
+            clicks_count=row["clicks_count"],
+            clicks_count24h=row["clicks_count24h"],
+            clicks_count1w=row["clicks_count1w"],
+            clicks_count2w=row["clicks_count2w"],
+            clicks_count3w=row["clicks_count3w"]
         )
         db.session.add(utm_link)
 
@@ -420,6 +426,8 @@ def add_data_stamp():
 
 @main.route('/add_campaign', methods=['GET', 'POST'])
 def add_campaign():
+    if request.method == 'GET':
+        return render_template("campaign_creation.html")
     # Получение данных из формы
     name = request.form['name']
     start_date = request.form['start_date']
@@ -435,6 +443,7 @@ def add_campaign():
     db.session.commit()
     return render_template("campaign_creation.html")
 
+
 @main.route('/get_default_values', methods=['POST'])
 def get_default_values():
     campaign_name = request.json['campaign_name']
@@ -443,6 +452,7 @@ def get_default_values():
         'url_by_default': default_values.url_by_default,
         'domain_by_default': default_values.domain_by_default
     })
+
 
 @main.route('/edit_campaing_name_list', methods=['GET'])
 def edit_campaing_name_list():
@@ -454,7 +464,7 @@ def edit_campaing_name_list():
 def edit_row(id):
     # Получаем данные из запроса
     data = request.json
-    start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+    start_date = datetime.strptime(data.get('start_date'), '%Y-%m-%d').date()
     data['hide'] = False if data['hide'].lower() == 'false' else True
     # Находим запись в базе данных по переданному id
     campaign = Campaign.query.get(id)
@@ -471,45 +481,3 @@ def edit_row(id):
 
     # Отправляем ответ клиенту
     return jsonify({'status': 'success', 'message': 'Row updated successfully'})
-
-# def fill_campaign_table():
-#     unique_campaigns = UTMLink.query.with_entities(UTMLink.campaign_name).distinct().all()
-#
-#     for campaign in unique_campaigns:
-#         campaign_name = campaign[0]
-#         # Предположим, что домен и ссылка для каждой кампании одинаковы
-#         domain, default_url = UTMLink.query.filter_by(campaign_name=campaign_name).first().domain, \
-#                               UTMLink.query.filter_by(campaign_name=campaign_name).first().url
-#         start_date=date(2024, 3, 14)
-#         new_campaign = Campaign(name=campaign_name, domain_by_default=domain, url_by_default=default_url, start_date=start_date)
-#         db.session.add(new_campaign)
-#
-#     db.session.commit()
-#
-# fill_campaign_table()
-
-# def reset_clicks_count():
-#     try:
-#         # Обновляем все записи, устанавливая счетчики кликов на 0
-#         UTMLink.query.update({
-#             UTMLink.clicks_count: 0,
-#             UTMLink.clicks_count24h: 0,
-#             UTMLink.clicks_count1w: 0,
-#             UTMLink.clicks_count2w: 0,
-#             UTMLink.clicks_count3w: 0
-#         })
-#         db.session.commit()
-#         print("Все счетчики кликов были успешно сброшены.")
-#     except Exception as e:
-#         db.session.rollback()
-#         print(f"Произошла ошибка при сбросе счетчиков кликов: {e}")
-#
-# reset_clicks_count()
-
-
-# ALTER TABLE utm_link ADD COLUMN clicks_count24h INTEGER DEFAULT 0;
-# ALTER TABLE utm_link ADD COLUMN clicks_count1w INTEGER DEFAULT 0;
-# ALTER TABLE utm_link ADD COLUMN clicks_count2w INTEGER DEFAULT 0;
-# ALTER TABLE utm_link ADD COLUMN clicks_count3w INTEGER DEFAULT 0;
-
-# ALTER TABLE Campaign ADD COLUMN hide boolean DEFAULT False;

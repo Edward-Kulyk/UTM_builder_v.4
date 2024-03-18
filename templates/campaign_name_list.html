@@ -26,7 +26,9 @@
             <td>{{ campaign.name }}</td>
             <td>{{ campaign.url_by_default }}</td>
             <td>{{ campaign.domain_by_default }}</td>
-            <td>{{ campaign.start_date }}</td>
+            <td>
+                <input required type="date" id="date" name="date" class="date-input" value="{{ campaign.start_date }}">
+            </td>
             <td><input type="checkbox" class="hide-checkbox" data-id="{{ campaign.id }}" {% if campaign.hide %}checked{% endif %}></td>
             <td>
                 <button class="edit-btn" data-id="{{ campaign.id }}"><img src="static/images/edit.png" alt="Edit"></button>
@@ -55,7 +57,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     name: row.cells[0].innerText,
                     url_by_default: row.cells[1].innerText,
                     domain_by_default: row.cells[2].innerText,
-                    start_date: row.cells[3].innerText,
+                    start_date: row.cells[3].querySelector('input').value,
                     hide: row.querySelector('.hide-checkbox').checked ? 'true' : 'false'
                 };
 
