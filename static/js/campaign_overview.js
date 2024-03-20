@@ -26,12 +26,10 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (allFieldsFilled) {
                         const id = row.id.split('-')[1];
                         const data = {
-                            url: row.cells[0].innerText,
                             campaign_content: row.cells[1].innerText,
                             campaign_source: row.cells[2].innerText,
                             campaign_medium: row.cells[3].innerText,
                             short_secure_url: row.cells[4].innerText,
-                            clicks_count: row.cells[5].innerText,
                         };
 
                         fetch(`/edit-row/${id}`, {

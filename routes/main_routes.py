@@ -359,7 +359,6 @@ def edit_record(id):
     data = request.json
     record = UTMLink.query.filter_by(short_id=str(id)).first()
     if record:
-        record.url = data['url']
         record.campaign_source = data['campaign_source']
         record.campaign_medium = data['campaign_medium']
         record.campaign_content = data.get('campaign_content')  # Используйте .get для необязательных полей
