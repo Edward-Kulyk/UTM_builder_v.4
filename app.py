@@ -9,8 +9,8 @@ scheduler = APScheduler()
 
 def create_app():
     app = Flask(__name__)
+    app.secret_key = 'Mega_secret_key_popici'
     app.config.from_object(Config)
-
     db.init_app(app)
 
     with app.app_context():

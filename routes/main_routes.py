@@ -1,19 +1,20 @@
 import datetime
+from datetime import datetime
+from functools import wraps
 from io import BytesIO
-
-from datetime import date, datetime
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
-from flask import Blueprint, request, render_template, redirect, jsonify, send_file
+from flask import jsonify, send_file
+from flask import (request, render_template, redirect, Blueprint)
 from sqlalchemy import func, Integer, desc, cast
 from sqlalchemy.orm import aliased
-
-import openpyxl
+from itertools import chain
 from app import db
 from models.models import UTMLink, ExcludedOption, Campaign
 from utils.db_utils import extract_first_if_tuple
 from utils.short_link import update_clicks_count, create_short_link, aggregate_clicks, edit_link, \
     delete_link
+
 
 main = Blueprint('main', __name__, )
 
@@ -120,8 +121,13 @@ def index():
     unique_campaign_names = [name[0] for name in Campaign.query.with_entities(Campaign.name)
     .filter(Campaign.name.notin_(excluded_campaign_names)).distinct().all()]
 
-    unique_urls = [url[0] for url in UTMLink.query.with_entities(UTMLink.url)
-    .filter(UTMLink.url.notin_(excluded_urls)).distinct().all()]
+    unique_urls = list(set(chain(
+        [url[0] for url in
+         UTMLink.query.with_entities(UTMLink.url).filter(UTMLink.url.notin_(excluded_urls)).distinct().all()],
+        [url[0] for url in
+         Campaign.query.with_entities(Campaign.url_by_default).filter(
+             Campaign.url_by_default.notin_(excluded_urls)).distinct().all()]
+    )))
 
     if short_secure_url is None:
         return render_template('index.html', utm_entries=utm_entries, unique_campaign_contents=unique_campaign_contents,
@@ -130,7 +136,7 @@ def index():
                                unique_campaign_names=unique_campaign_names,
                                unique_url=unique_urls, error_message=error_message)
     else:
-        return render_template('index.html', utm_entries=utm_entries, unique_campaign_ids=unique_campaign_contents,
+        return render_template('index.html', utm_entries=utm_entries, unique_campaign_contents=unique_campaign_contents,
                                unique_campaign_sources=unique_campaign_sources,
                                unique_campaign_mediums=unique_campaign_mediums,
                                unique_campaign_names=unique_campaign_names,
@@ -425,22 +431,31 @@ def add_data_stamp():
 
 @main.route('/add_campaign', methods=['GET', 'POST'])
 def add_campaign():
-    if request.method == 'GET':
+    if request.method == 'POST':
+        name = request.form['name']
+        url_by_default = request.form['url_by_default']
+        domain_by_default = request.form['domain_by_default']
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+
+        # Validate start_date
+        if not start_date:
+            # Provide a default value or handle empty start_date based on your requirements
+            start_date = datetime.date.today()  # Example: Use today's date as default
+
+        campaign = Campaign(
+            name=name,
+            url_by_default=url_by_default,
+            domain_by_default=domain_by_default,
+            start_date=start_date,
+            hide=False  # Assuming hide is a boolean field
+        )
+
+        db.session.add(campaign)
+        db.session.commit()
+
         return render_template("campaign_creation.html")
-    # Получение данных из формы
-    name = request.form['name']
-    start_date = request.form['start_date']
-    url_by_default = request.form['url_by_default']
-    domain_by_default = request.form['domain_by_default']
 
-    # Создание объекта кампании
-    new_campaign = Campaign(name=name, start_date=start_date, url_by_default=url_by_default,
-                            domain_by_default=domain_by_default)
-
-    # Добавление кампании в базу данных
-    db.session.add(new_campaign)
-    db.session.commit()
-    return render_template("campaign_creation.html")
+    return render_template('campaign_creation.html')
 
 
 @main.route('/get_default_values', methods=['POST'])
