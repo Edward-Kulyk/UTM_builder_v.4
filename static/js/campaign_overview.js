@@ -107,10 +107,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
 document.addEventListener("DOMContentLoaded", function() {
     // Add click event listeners to all copy buttons
-    document.querySelectorAll('.table-container .copy-btn').forEach(button => {
+    document.querySelectorAll('.table_title .copy-btn').forEach(button => {
         button.addEventListener('click', function() {
-            // Find the closest table-container parent and select the table
-            const table = this.closest('.table-container').querySelector('table');
+            // Так как кнопка находится внутри .table_title, сначала нужно найти .table_title
+            const tableTitle = this.closest('.table_title');
+            // Затем, используем nextElementSibling, чтобы получить следующий элемент за .table_title, который должен быть .table-container
+            const tableContainer = tableTitle.nextElementSibling;
+            // Теперь, когда у нас есть .table-container, мы можем найти таблицу внутри него
+            const table = tableContainer.querySelector('table');
             let tableContent = '';
 
             // Loop through each row and collect the data
@@ -144,4 +148,20 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+  // Находим все кнопки "Show Details"
+  document.querySelectorAll('.toggle-details-btn').forEach(function(button) {
+    button.addEventListener('click', function() {
+      // Находим таблицу, которая является ближайшим родителем для кнопки
+      const table = button.closest('.table-container').querySelector('table');
+
+      // Внутри найденной таблицы переключаем видимость колонок
+      const detailsColumns = table.querySelectorAll('.clicks-details');
+      detailsColumns.forEach(function(col) {
+        col.classList.toggle('hidden');
+        col.classList.toggle('fade-in');
+      });
+    });
+  });
+});
 

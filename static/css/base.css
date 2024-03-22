@@ -1,0 +1,58 @@
+/* Общие стили для всего сайта */
+@font-face {
+  font-family: "TTNormsPro";
+  src: url("/static/fonts/TTNormsPro.ttf") format("truetype");
+}
+
+body {
+  font-family: "TTNormsPro";
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+  background-image: url('/static/images/symbol_BG.png');
+  background-repeat: no-repeat;
+  background-attachment: fixed; /* Изображение будет неподвижным при скроллинге */
+  background-position: center right; /* Логотип будет расположен правее центра */
+  background-size: contain; /* Логотип будет полностью виден */
+}
+
+/* Стили для хедера */
+.header {
+  background-color: #004a7c; /* Темно-синий цвет фона хедера */
+  color: white;
+  display: flex;
+  align-items: center;
+}
+
+.header a {
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  padding: 20px;
+  font-size: 15pt;
+  font-weight: bold;
+  transition: background-color 0.3s, color 0.3s; /* Плавные переходы */
+  display: block; /* Растягивание ссылок на всю высоту паддинга */
+}
+
+.header a:hover {
+  background-color: white; /* Белый фон ячейки при наведении */
+  color: #004a7c; /* Темно-синий текст при наведении */
+  text-decoration: none;
+}
+
+/* Стили для футера */
+.footer {
+  background-color: #002a4d; /* Более темный оттенок синего */
+  color: white;
+  text-align: center;
+  padding: 15px 0;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+}
+
+.footer p {
+  margin: 0;
+  font-size: 14px;
+}

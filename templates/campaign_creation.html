@@ -3,7 +3,7 @@
 {% block title %}Campaigns Overview{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/campaign_name_creation.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 {% endblock %}
 
@@ -33,7 +33,7 @@
             </select>
         </div>
 
-        <button type="submit" class="btn btn-primary">Add</button>
+        <input type="submit" value="Add campaign name">
     </form>
 
 {% endblock %}

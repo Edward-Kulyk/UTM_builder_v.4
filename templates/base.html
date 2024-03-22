@@ -3,14 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+
     <title>ASUS UTM builder</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     {% block head %}{% endblock %}
 </head>
 <body>
-    {% include 'header.html' %}
+    <div class="header">
+        <a href="{{ url_for('main.index') }}">Home</a>
+        <a href="{{ url_for('main.add_campaign')}}">New campaign</a>
+        <a href="{{ url_for('main.edit_campaing_name_list')}}">Campaign name lists</a>
+        <a href="{{ url_for('main.campaigns') }}">Campaigns Overview</a>
+        <a href="{{ url_for('main.exclude_options') }}">Exclude Options</a>
+        <a href="{{ url_for('main.manage_exclusions') }}">Manage Exclusions Options</a>
+        <a href="{{ url_for('main.filter_setting')}}">Filtered campaigns</a>
+        <a href="{{ url_for('main.data_stamp')}}">Add date-stamp</a>
+    </div>
+
     {% block content %}{% endblock %}
+
+    <div class="footer">
+        <p>© 2024 ASUS UTM Builder. All rights reserved.</p>
+    </div>
+
     {% block scripts %}
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% endblock %}
