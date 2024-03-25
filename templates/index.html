@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
 {% block title %}UTM Link Builder{% endblock %}
-
 {% block head %}
-
+<link rel="stylesheet" href="{{ url_for('static', filename='css/utm_creation.css') }}">
 {% endblock %}
-
 {% block content %}
-    <h1>UTM Link Builder</h1>
+    <div class="header-container">
+        <h1>UTM Link Builder</h1>
+        <img src="{{ url_for('static', filename='images/utm.png') }}" alt="UTM Builder" class="utm-image">
+    </div>
     {% if error_message %}
         <div class="error-message" style="color: red; font-weight: bold;">{{ error_message }}</div>
     {% endif %}
@@ -52,8 +53,7 @@
         </select>
         <input type="text" name="campaign_medium_other" id="campaign_medium_other" placeholder="Enter new value" style="display: none;"><br>
 
-        <input type="text" name="campaign_name_other" id="campaign_name_other" placeholder="Enter new value" style="display: none;"><br>
-                <label for="campaign_content">Campaign content:</label>
+        <label for="campaign_content">Campaign content:</label>
         <select name="campaign_content" id="campaign_content" onchange="toggleOtherInput('campaign_content', 'campaign_content_other')">
           <option value="" disabled selected>Select or Enter Campaign ID</option>
             {% for id in unique_campaign_contents %}
@@ -74,11 +74,8 @@
 
         <label>UTM Link:</label>
         <span id="utm-link"></span><br>
-        <script>
-            // Initialize ClipboardJS
-            new ClipboardJS('#copyButton');
-        </script>
         <input type="submit" value="Generate UTM Link">
+
         {% if short_url %}
             <div id="copyButtonContainer">
             <p>Generated Short Link: <a href="{{ short_url }}" target="_blank" id="shortLink">{{ short_url }}</a></p><span class="copy-button" id="copyButton" data-clipboard-target="#shortLink">
@@ -86,10 +83,10 @@
             </span>
             </div>
         {% endif %}
+
     </form>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/clipboard.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 {% endblock %}

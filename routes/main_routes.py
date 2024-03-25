@@ -462,6 +462,7 @@ def add_campaign():
 def get_default_values():
     campaign_name = request.json['campaign_name']
     default_values = Campaign.query.filter_by(name=campaign_name).first()
+    print(campaign_name)
     return jsonify({
         'url_by_default': default_values.url_by_default,
         'domain_by_default': default_values.domain_by_default

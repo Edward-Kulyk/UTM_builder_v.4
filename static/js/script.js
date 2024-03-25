@@ -40,11 +40,6 @@ function getSelectedValue(selectId, inputId) {
     }
 }
 
-// Initialize ClipboardJS once the page has loaded
-document.addEventListener('DOMContentLoaded', function() {
-    new ClipboardJS('#copyButton');
-});
-
 // Функция для отправки запроса на сервер и получения значений по умолчанию
 function getDefaultValues(campaignName) {
     fetch('/get_default_values', {
@@ -68,12 +63,5 @@ function getDefaultValues(campaignName) {
 // Обработчик выбора названия кампании
 document.getElementById("campaign_name").addEventListener('change', function() {
     var selectedCampaign = this.value;
-    if (selectedCampaign === 'other') {
-        // Если выбрано "Other", показываем поле для ввода своего значения
-        document.getElementById("campaign_name_other").style.display = "block";
-    } else {
-        // Иначе, скрываем поле для ввода своего значения и отправляем запрос на сервер для получения значений по умолчанию
-        document.getElementById("campaign_name_other").style.display = "none";
-        getDefaultValues(selectedCampaign);
-    }
+    getDefaultValues(selectedCampaign);
 });

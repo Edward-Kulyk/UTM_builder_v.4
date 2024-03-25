@@ -3,16 +3,18 @@
 {% block title %}Campaigns Overview{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/campaign_result.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 {% endblock %}
 
 {% block content %}
     <h1>Campaigns Overview</h1>
     {% for campaign_data in grouped_campaigns %}
-    <div class="table-container">
-        <button class="copy-btn">Copy table</button>
+    <div class="table_title">
         <h2>{{ campaign_data.campaign_name }} - [Launch Date: {{ campaign_data.start_date }}]</h2>
+        <button class="copy-btn">Copy table</button>
+    </div>
+    <div class="table-container">
         <table>
             <thead>
                 <tr>
@@ -20,11 +22,15 @@
                     <th>Campaign Contents</th>
                     <th>Campaign Sources</th>
                     <th>Campaign Mediums</th>
-                    <th>Clicks 24h</th>
-                    <th>Clicks W1</th>
-                    <th>Clicks W2</th>
-                    <th>Clicks W3</th>
-                    <th>Total Clicks</th>
+                    <th class="clicks-details hidden">Clicks 24h</th>
+                    <th class="clicks-details hidden">Clicks W1</th>
+                    <th class="clicks-details hidden">Clicks W2</th>
+                    <th class="clicks-details hidden">Clicks W3</th>
+                    <th>Total Clicks
+                        <button class="toggle-details-btn">
+                            <img src="static/images/expand.png" alt="Show/Hide Details" />
+                        </button>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -46,12 +52,12 @@
                         <td>{{ campaign_contents_list[i] }}</td>
                         <td>{{ campaign_sources_list[i] }}</td>
                         <td>{{ campaign_mediums_list[i] }}</td>
-                        <td>{{ campaign_clicks24[i] }}</td>
-                        <td>{{ campaign_clicks1w[i] }}</td>
-                        <td>{{ campaign_clicks2w[i] }}</td>
-                        <td>{{ campaign_clicks3w[i] }}</td>
+                        <td class="clicks-details hidden">{{ campaign_clicks24[i] }}</td>
+                        <td class="clicks-details hidden">{{ campaign_clicks1w[i] }}</td>
+                        <td class="clicks-details hidden">{{ campaign_clicks2w[i] }}</td>
+                        <td class="clicks-details hidden">{{ campaign_clicks3w[i] }}</td>
                         <td>{{ clicks_counts_list[i] }}</td>
-                        <td>
+                        <td class="actions-cell">
                             <!-- Добавление кнопок редактирования и удаления для каждой строки -->
                             <button class="edit-btn" data-id="{{ short_ids_list[i] }}"><img src="static\images\edit.png" alt="Edit"></button>
                             <button class="delete-btn" data-id="{{ short_ids_list[i] }}"><img src="static\images\delete.png" alt="Delete"></button>
@@ -60,10 +66,10 @@
                 {% endfor %}
                 <tr class="total-clicks">
                     <td colspan="4">Total Clicks</td>
-                    <td>{{ campaign_data.total_clicks_24h }}</td>
-                    <td>{{ campaign_data.total_clicks_1w }}</td>
-                    <td>{{ campaign_data.total_clicks_2w }}</td>
-                    <td>{{ campaign_data.total_clicks_3w }}</td>
+                    <td class="clicks-details hidden">{{ campaign_data.total_clicks_24h }}</td>
+                    <td class="clicks-details hidden">{{ campaign_data.total_clicks_1w }}</td>
+                    <td class="clicks-details hidden">{{ campaign_data.total_clicks_2w }}</td>
+                    <td class="clicks-details hidden">{{ campaign_data.total_clicks_3w }}</td>
                     <td>{{ campaign_data.total_clicks }}</td>
                 </tr>
             </tbody>
